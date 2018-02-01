@@ -4,6 +4,21 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var mongoose = require('mongoose');
+mongoose.Promise = require('bluebird');
+
+const Dishes = require('./models/dishes');
+
+const url = 'mongodb://localhost:27017/conFusion';
+const connect = mongoose.connect(url, {
+  useMongoClient: true
+});
+
+connect.then((db)=> {
+   console.log('connected to the server');
+}, (e) => {
+  console.log(e);
+});
 
 var index = require('./routes/index');
 var users = require('./routes/users');
