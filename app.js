@@ -6,6 +6,8 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 mongoose.Promise = require('bluebird');
+var session = require('express-session');
+var FileStore = require('session-file-store')(session);
 
 const Dishes = require('./models/dishes');
 
@@ -36,42 +38,35 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cookieParser('123-000-321'));
+//app.use(cookieParser('123-000-321'));
+app.use(session({
+  name:'session-id',
+  secret:'123-000-321',
+  saveUninitialized:false,
+  resave:false,
+  store: new FileStore()
+}));
+
+app.use('/', index);
+app.use('/users', users);
 
 function auth(req, res, next) {
-  console.log(req.signedCookies);
+  console.log(req.session);
 
-  if(!req.signedCookies.user) {
-    var authHeader = req.headers.authorization;
-
-    if(!authHeader) {
+  if(!req.session.user) {
       var err = new Error('You are not authenticated');
       res.setHeader('WWW-Authenticate', 'Basic');
-      err.status = 401;
+      err.status = 403;
       return next(err);
-    }
-    var auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');
-    var username = auth[0];
-    var password = auth[1];
-
-    if(username === 'admin' && password === 'admin') {
-      res.cookie('user', 'admin', {signed: true});
-      next();
-    }
-    else {
-      var err = new Error('You are not authenticated');
-      res.setHeader('WWW-Authenticate', 'Basic');
-      err.status = 401;
-      return next(err);
-    }
   }
+
   else {
-    if(req.signedCookies.user === 'admin') {
+    if(req.session.user === 'authenticated') {
       next();
     }
     else{
       var err = new Error('You are not authenticated');
-      err.status = 401;
+      err.status = 403;
       return next(err);
     }
   }
@@ -82,8 +77,6 @@ app.use(auth);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', index);
-app.use('/users', users);
 app.use('/dishes', dishRouter);
 app.use('/promotions', promoRouter);
 
